@@ -5,3 +5,4 @@ joblib==1.4.0
 numpy
 pydantic==2.7.0
 python-dotenv==1.0.1
+gdown==5.1.0

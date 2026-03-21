@@ -13,6 +13,7 @@ import numpy as np
 import joblib
 import os
 import logging
+import gdown
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -36,9 +37,35 @@ rf_model   = None
 scaler     = None
 iso_forest = None
 
+def download_if_missing():
+    """Downloads model files from Google Drive if not present locally."""
+    files = {
+        "rf_model.pkl":    os.getenv("1AiPiAmuMs2YUB_xz8QkBxyMxTx9gAnDi"),
+        "scaler.pkl":      os.getenv("12A-I-Ys4vlQtjxp2qgdqZy_jHGZgDt-f"),
+        "iso_forest.pkl":  os.getenv("1erpSoTnOhNsMflxG-dNmmJC8aXKVK0R-"),
+    }
+    for filename, file_id in files.items():
+        if os.path.exists(filename):
+            logger.info(f"✅ {filename} already exists, skipping download")
+            continue
+        if not file_id:
+            logger.warning(f"⚠️  No Drive ID set for {filename}")
+            continue
+        try:
+            url = f"https://drive.google.com/uc?id={file_id}"
+            logger.info(f"⬇️  Downloading {filename} from Google Drive...")
+            gdown.download(url, filename, quiet=False, fuzzy=True)
+            logger.info(f"✅ {filename} downloaded successfully")
+        except Exception as e:
+            logger.error(f"❌ Failed to download {filename}: {e}")
+
 @app.on_event("startup")
 def load_models():
     global rf_model, scaler, iso_forest
+
+     # Download from Google Drive if files are missing
+    download_if_missing()
+    
     try:
         rf_model   = joblib.load(os.getenv("MODEL_PATH",      "rf_model.pkl"))
         scaler     = joblib.load(os.getenv("SCALER_PATH",     "scaler.pkl"))
