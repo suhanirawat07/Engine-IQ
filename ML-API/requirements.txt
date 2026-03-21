@@ -1,8 +1,8 @@
-fastapi==0.110.0
-uvicorn[standard]==0.29.0
-scikit-learn
-joblib==1.4.0
+fastapi
+uvicorn[standard]
+scikit-learn==1.4.2
+joblib
 numpy
-pydantic==2.10.0
-python-dotenv==1.0.1
-gdown==5.1.0
+pydantic
+python-dotenv
+gdown
