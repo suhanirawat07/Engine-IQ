@@ -14,6 +14,9 @@ import joblib
 import os
 import logging
 import gdown
+import warnings
+from sklearn.exceptions import InconsistentVersionWarning
+warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -65,7 +68,7 @@ def load_models():
 
      # Download from Google Drive if files are missing
     download_if_missing()
-    
+
     try:
         rf_model   = joblib.load(os.getenv("MODEL_PATH",      "rf_model.pkl"))
         scaler     = joblib.load(os.getenv("SCALER_PATH",     "scaler.pkl"))
