@@ -42,10 +42,16 @@ iso_forest = None
 
 def download_if_missing():
     """Downloads model files from Google Drive if not present locally."""
+    # files = {
+    #     "rf_model.pkl":    os.getenv("RF_MODEL_DRIVE_ID"),
+    #     "scaler.pkl":      os.getenv("SCALER_DRIVE_ID"),
+    #     "iso_forest.pkl":  os.getenv("ISO_FOREST_DRIVE_ID"),
+    # }
+
     files = {
-        "rf_model.pkl":    os.getenv("RF_MODEL_DRIVE_ID"),
-        "scaler.pkl":      os.getenv("SCALER_DRIVE_ID"),
-        "iso_forest.pkl":  os.getenv("ISO_FOREST_DRIVE_ID"),
+        "rf_model.pkl":   "1AiPiAmuMs2YUB_xz8QkBxyMxTx9gAnDi",
+        "scaler.pkl":     "12A-I-Ys4vlQtjxp2qgdqZy_jHGZgDt-f",
+        "iso_forest.pkl": "1erpSoTnOhNsMflxG-dNmmJC8aXKVK0R-",
     }
     for filename, file_id in files.items():
         if os.path.exists(filename):
