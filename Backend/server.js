@@ -1,9 +1,5 @@
-/**
- * Engine Health Monitoring System — Express Server
- */
 require("dotenv").config();
 const express = require("express");
-const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
@@ -14,32 +10,41 @@ const userRoutes = require("./routes/user");
 
 const app = express();
 
+// ─── CORS — manual middleware, no cors package ────────────────────────────────
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  // Strip trailing slash from origin before comparing
+  const cleanOrigin = origin ? origin.replace(/\/$/, "") : "";
+
+  const allowed = [
+    "https://engine-iq.vercel.app",
+    "http://localhost:3000",
+  ];
+
+  if (!origin || allowed.includes(cleanOrigin)) {
+    res.setHeader("Access-Control-Allow-Origin", cleanOrigin || "*");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+  }
+
+  // Handle preflight
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
 // ─── Middleware ───────────────────────────────────────────────────────────────
-app.use(helmet());
-// app.use(cors({ origin: process.env.FRONTEND_URL || "*" }));
-app.use(cors({
-  origin: function(origin, callback) {
-    const allowed = [
-      process.env.FRONTEND_URL,
-      "https://engine-iq.vercel.app",
-      "http://localhost:3000",
-    ];
-    if (!origin || allowed.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-}));
+app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(express.json());
 app.use(morgan("dev"));
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 100,
   message: { error: "Too many requests, please try again later." },
 });
@@ -52,7 +57,6 @@ connectDB();
 app.use("/api/predict", predictRoutes);
 app.use("/api/users", userRoutes);
 
-// Health check
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
