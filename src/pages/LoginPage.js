@@ -28,7 +28,7 @@ export default function LoginPage() {
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         {/* Card */}
-        <div className="bg-[#292524] border border-[#44403c] rounded-2xl p-8 shadow-2xl shadow-black/50">
+        <div className="bg-transparent border border-[#44403c] rounded-2xl p-8 shadow-2xl shadow-black/50">
           {/* Logo */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-2xl mx-auto mb-4 shadow-lg shadow-amber-500/30">
