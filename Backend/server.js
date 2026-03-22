@@ -9,6 +9,7 @@ const predictRoutes = require("./routes/predict");
 const userRoutes = require("./routes/user");
 
 const app = express();
+app.set("trust proxy", 1);
 
 // ─── CORS — manual middleware, no cors package ────────────────────────────────
 app.use((req, res, next) => {

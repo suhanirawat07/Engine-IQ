@@ -34,7 +34,7 @@ exports.predict = async (req, res) => {
     const mlResponse = await axios.post(
       `${process.env.ML_API_URL}/predict`,
       mlPayload,
-      { timeout: 10000 }
+      { timeout: 120000 }
     );
 
     const { risk_level, health_score, risk_description, recommendations } = mlResponse.data;
