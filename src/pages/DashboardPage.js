@@ -2,7 +2,12 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { SENSORS, SENSOR_CATEGORIES } from "../services/sensorMeta";
-import { apiBaseUrl, submitPrediction } from "../services/api";
+import {
+  apiBaseUrl,
+  isHostedFrontend,
+  isLocalApiTarget,
+  submitPrediction,
+} from "../services/api";
 import { useEffect } from "react";
 import axios from "axios";
 
@@ -24,6 +29,18 @@ export default function DashboardPage() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [apiError, setApiError] = useState("");
   const [tooltip, setTooltip] = useState(null);
+
+  const getNetworkErrorMessage = () => {
+    if (isHostedFrontend && isLocalApiTarget) {
+      return "Frontend is deployed but API URL points to localhost. Set REACT_APP_API_URL in Vercel to your deployed backend URL and redeploy.";
+    }
+
+    if (isHostedFrontend) {
+      return `Cannot reach backend API at ${apiBaseUrl}. Verify backend is deployed, running, and CORS allows this frontend domain.`;
+    }
+
+    return "Cannot reach backend API. Start Backend (port 5000) and ML-API (port 8000), then try again.";
+  };
 
   useEffect(() => {
   // Ping both services on page load to wake them up
@@ -76,10 +93,10 @@ export default function DashboardPage() {
       setApiError(
         err.response?.data?.error ||
           (err.code === "ERR_NETWORK"
-            ? "Cannot reach backend API. Start Backend (port 5000) and ML-API (port 8000), then try again."
+            ? getNetworkErrorMessage()
             : "") ||
           err.message ||
-          "Prediction failed. Check that the backend is running."
+          "Prediction failed. Check that the backend API is reachable."
       );
     } finally {
       setLoading(false);

@@ -4,6 +4,11 @@ const rawApiUrl = (process.env.REACT_APP_API_URL || "http://localhost:5000").tri
 const normalizedApiUrl = rawApiUrl.replace(/\/+$/, "").replace(/\/api$/, "");
 export const apiBaseUrl = `${normalizedApiUrl}/api`;
 
+const localHosts = new Set(["localhost", "127.0.0.1"]);
+const browserHost = typeof window !== "undefined" ? window.location.hostname : "";
+export const isHostedFrontend = Boolean(browserHost && !localHosts.has(browserHost));
+export const isLocalApiTarget = /localhost|127\.0\.0\.1/i.test(normalizedApiUrl);
+
 const api = axios.create({
   baseURL: apiBaseUrl,
   timeout: 120000,
