@@ -62,6 +62,10 @@ app.use("/api/predict", predictRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/assistant", assistantRoutes);
 
+app.get("/", (req, res) => {
+  res.json({ status: "ok", service: "backend" });
+});
+
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
