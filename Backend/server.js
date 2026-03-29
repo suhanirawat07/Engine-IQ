@@ -21,6 +21,7 @@ const envOrigins = (process.env.CORS_ORIGINS || "")
 
 const allowedOrigins = new Set([
   "https://engine-iq.vercel.app",
+  "https://engine-iq-one.vercel.app",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
   "http://localhost:5173",
@@ -28,12 +29,21 @@ const allowedOrigins = new Set([
   ...envOrigins,
 ]);
 
+const vercelPreviewPattern = /^https:\/\/engine-iq[\w-]*\.vercel\.app$/i;
+
 app.use(
   cors({
     origin(origin, callback) {
       if (!origin) return callback(null, true);
       const cleanOrigin = origin.replace(/\/$/, "");
-      return callback(null, allowedOrigins.has(cleanOrigin));
+      const isAllowed =
+        allowedOrigins.has(cleanOrigin) || vercelPreviewPattern.test(cleanOrigin);
+
+      if (!isAllowed) {
+        console.warn("Blocked CORS origin:", cleanOrigin);
+      }
+
+      return callback(null, isAllowed);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
