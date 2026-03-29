@@ -10,6 +10,31 @@ const firebaseConfig = {
   appId: process.env.REACT_APP_FIREBASE_APP_ID,
 };
 
+const requiredFirebaseKeys = [
+  "apiKey",
+  "authDomain",
+  "projectId",
+  "storageBucket",
+  "messagingSenderId",
+  "appId",
+];
+
+const missingFirebaseKeys = requiredFirebaseKeys.filter(
+  (key) => !firebaseConfig[key]
+);
+
+export const firebaseConfigStatus = {
+  isConfigured: missingFirebaseKeys.length === 0,
+  missingKeys: missingFirebaseKeys,
+};
+
+if (!firebaseConfigStatus.isConfigured) {
+  console.error(
+    "Missing Firebase environment variables:",
+    missingFirebaseKeys.map((key) => `REACT_APP_FIREBASE_${key.replace(/([A-Z])/g, "_$1").toUpperCase().replace(/^_/, "")}`)
+  );
+}
+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();

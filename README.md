@@ -277,13 +277,28 @@ If your model outputs a continuous health score (regression), update the `predic
 
 ### Frontend → Vercel / Netlify
 ```bash
-cd frontend && npm run build
+cd . && npm run build
 # Deploy the build/ folder
 ```
+
+Required Vercel environment variables (Production/Preview):
+- `REACT_APP_FIREBASE_API_KEY`
+- `REACT_APP_FIREBASE_AUTH_DOMAIN`
+- `REACT_APP_FIREBASE_PROJECT_ID`
+- `REACT_APP_FIREBASE_STORAGE_BUCKET`
+- `REACT_APP_FIREBASE_MESSAGING_SENDER_ID`
+- `REACT_APP_FIREBASE_APP_ID`
+- `REACT_APP_API_URL` (your deployed backend origin, without `/api`)
+
+Firebase Auth setup required for deployed sign-in:
+- Enable Google provider in Firebase Authentication.
+- Add your Vercel domains to **Authentication → Settings → Authorized domains**.
+- Add both your production domain (for example `engine-iq.vercel.app`) and preview domains if you test previews.
 
 ### Backend → Railway / Render
 - Set `MONGODB_URI` to your Atlas connection string
 - Set `ML_API_URL` to your deployed FastAPI URL
+- Set `CORS_ORIGINS` to include your frontend domain(s), comma-separated
 
 ### ML API → Railway / Render (Python service)
 ```bash

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
-import { auth, googleProvider } from "../firebase/config";
+import { auth, googleProvider, firebaseConfigStatus } from "../firebase/config";
 import api from "../services/api";
 
 const AuthContext = createContext(null);
@@ -50,7 +50,15 @@ export function AuthProvider({ children }) {
     return unsub;
   }, []);
 
-  const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
+  const loginWithGoogle = () => {
+    if (!firebaseConfigStatus.isConfigured) {
+      const missing = firebaseConfigStatus.missingKeys.join(", ");
+      const err = new Error(`Missing Firebase config keys: ${missing}`);
+      err.code = "auth/missing-config";
+      throw err;
+    }
+    return signInWithPopup(auth, googleProvider);
+  };
   const logout = () => signOut(auth);
 
   return (

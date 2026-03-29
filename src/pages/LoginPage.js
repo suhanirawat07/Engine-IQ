@@ -2,6 +2,32 @@ import React, { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
+const getFirebaseLoginErrorMessage = (err) => {
+  const code = err?.code || "";
+
+  if (code === "auth/popup-blocked") {
+    return "Popup was blocked by the browser. Please allow popups and try again.";
+  }
+
+  if (code === "auth/popup-closed-by-user") {
+    return "Sign-in popup was closed before completing login.";
+  }
+
+  if (code === "auth/unauthorized-domain") {
+    return "This domain is not authorized in Firebase Auth. Add your Vercel domain in Firebase console.";
+  }
+
+  if (code === "auth/invalid-api-key" || code === "auth/missing-config") {
+    return "Firebase environment variables are missing or invalid in Vercel project settings.";
+  }
+
+  if (code === "auth/operation-not-allowed") {
+    return "Google sign-in is not enabled for this Firebase project.";
+  }
+
+  return "Sign-in failed. Please try again.";
+};
+
 export default function LoginPage() {
   const { user, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
@@ -17,7 +43,7 @@ export default function LoginPage() {
       await loginWithGoogle();
       navigate("/dashboard");
     } catch (err) {
-      setError("Sign-in failed. Please try again.");
+      setError(getFirebaseLoginErrorMessage(err));
       console.error(err);
     } finally {
       setLoading(false);
