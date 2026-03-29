@@ -3,40 +3,43 @@ const express = require("express");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
+const cors = require("cors");
 
 const connectDB = require("./config/db");
 const predictRoutes = require("./routes/predict");
 const userRoutes = require("./routes/user");
+const assistantRoutes = require("./routes/assistant");
 
 const app = express();
 app.set("trust proxy", 1);
 
-// ─── CORS — manual middleware, no cors package ────────────────────────────────
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
+// ─── CORS ─────────────────────────────────────────────────────────────────────
+const envOrigins = (process.env.CORS_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim().replace(/\/$/, ""))
+  .filter(Boolean);
 
-  // Strip trailing slash from origin before comparing
-  const cleanOrigin = origin ? origin.replace(/\/$/, "") : "";
+const allowedOrigins = new Set([
+  "https://engine-iq.vercel.app",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  ...envOrigins,
+]);
 
-  const allowed = [
-    "https://engine-iq.vercel.app",
-    "http://localhost:3000",
-  ];
-
-  if (!origin || allowed.includes(cleanOrigin)) {
-    res.setHeader("Access-Control-Allow-Origin", cleanOrigin || "*");
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
-  }
-
-  // Handle preflight
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-
-  next();
-});
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin) return callback(null, true);
+      const cleanOrigin = origin.replace(/\/$/, "");
+      return callback(null, allowedOrigins.has(cleanOrigin));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: false }));
@@ -57,6 +60,7 @@ connectDB();
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use("/api/predict", predictRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/assistant", assistantRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });

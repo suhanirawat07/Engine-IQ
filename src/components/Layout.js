@@ -13,6 +13,15 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const role = (user?.role || "user").toLowerCase();
+  const roleLabel = role === "admin" ? "Admin" : "User";
+  const navItems = role === "admin"
+    ? [...navLinks, { to: "/admin/retrain", label: "Admin Monitor" }]
+    : navLinks;
+  const roleBadgeClass =
+    role === "admin"
+      ? "bg-amber-500/15 text-amber-700 border-amber-500/40"
+      : "bg-stone-100 text-stone-600 border-stone-300";
 
   const handleLogout = async () => {
     await logout();
@@ -37,7 +46,7 @@ export default function Layout() {
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-1">
-            {navLinks.map(({ to, label, exact }) => (
+            {navItems.map(({ to, label, exact }) => (
               <NavLink
                 key={to}
                 to={to}
@@ -65,6 +74,9 @@ export default function Layout() {
                   className="w-8 h-8 rounded-full border-2 border-amber-500/50"
                 />
                 <span className="text-sm text-stone-500 max-w-[120px] truncate">{user.displayName}</span>
+                <span className={`px-2 py-0.5 text-[11px] font-semibold rounded-full border ${roleBadgeClass}`}>
+                  {roleLabel}
+                </span>
                 <button
                   onClick={handleLogout}
                   className="px-3 py-1.5 text-sm text-stone-500 hover:text-red-400 border border-stone-300 hover:border-red-500/50 rounded-lg transition-all"
@@ -99,7 +111,7 @@ export default function Layout() {
         {/* Mobile menu */}
         {menuOpen && (
           <div className="md:hidden bg-[#292524] border-t border-[#44403c] px-4 py-3 flex flex-col gap-2">
-            {navLinks.map(({ to, label, exact }) => (
+            {navItems.map(({ to, label, exact }) => (
               <NavLink
                 key={to}
                 to={to}
@@ -115,9 +127,17 @@ export default function Layout() {
               </NavLink>
             ))}
             {user ? (
-              <button onClick={handleLogout} className="px-4 py-2 text-sm text-red-400 text-left">
-                Sign out
-              </button>
+              <>
+                <div className="px-4 py-1 text-xs text-stone-500">
+                  Signed in as <span className="font-semibold text-stone-700">{user.displayName}</span>
+                  <span className={`ml-2 px-2 py-0.5 text-[11px] font-semibold rounded-full border ${roleBadgeClass}`}>
+                    {roleLabel}
+                  </span>
+                </div>
+                <button onClick={handleLogout} className="px-4 py-2 text-sm text-red-400 text-left">
+                  Sign out
+                </button>
+              </>
             ) : (
               <NavLink to="/login" onClick={() => setMenuOpen(false)} className="px-4 py-2 text-sm text-amber-400">
                 Sign In

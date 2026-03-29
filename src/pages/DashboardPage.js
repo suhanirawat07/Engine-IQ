@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { SENSORS, SENSOR_CATEGORIES } from "../services/sensorMeta";
-import { submitPrediction } from "../services/api";
+import { apiBaseUrl, submitPrediction } from "../services/api";
 import { useEffect } from "react";
 import axios from "axios";
 
@@ -27,7 +27,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
   // Ping both services on page load to wake them up
-  axios.get(`${process.env.REACT_APP_API_URL}/api/health`, { timeout: 120000 })
+  axios.get(`${apiBaseUrl}/health`, { timeout: 120000 })
     .catch(() => {});
 }, []);
 
@@ -75,6 +75,9 @@ export default function DashboardPage() {
     } catch (err) {
       setApiError(
         err.response?.data?.error ||
+          (err.code === "ERR_NETWORK"
+            ? "Cannot reach backend API. Start Backend (port 5000) and ML-API (port 8000), then try again."
+            : "") ||
           err.message ||
           "Prediction failed. Check that the backend is running."
       );

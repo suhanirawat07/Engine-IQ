@@ -25,6 +25,16 @@ const predictionSchema = new mongoose.Schema(
     risk_level: { type: String, required: true },
     risk_description: { type: String },
     recommendations: [{ type: String }],
+    shap_explanation: { type: Object },
+    feedback: {
+      isAccurate: { type: Boolean },
+      correctedRiskLevel: {
+        type: String,
+        enum: ["Healthy", "Moderate", "High Risk", "Critical"],
+      },
+      notes: { type: String, maxlength: 500 },
+      submittedAt: { type: Date },
+    },
   },
   { timestamps: true }
 );

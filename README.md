@@ -90,7 +90,7 @@ cp .env .env.local
 npm run dev
 ```
 
-**Verify:** Open http://localhost:5000/api/health — should return `{"status":"ok"}`
+**Verify:** Open http:// localhost:5000/api/health — should return `{"status":"ok"}`
 
 ---
 

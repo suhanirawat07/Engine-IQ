@@ -16,7 +16,16 @@ import logging
 import gdown
 import warnings
 from sklearn.exceptions import InconsistentVersionWarning
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import MinMaxScaler
 warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
+
+try:
+    import shap
+    SHAP_AVAILABLE = True
+except Exception:
+    shap = None
+    SHAP_AVAILABLE = False
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,6 +48,7 @@ app.add_middleware(
 rf_model   = None
 scaler     = None
 iso_forest = None
+shap_explainer = None
 
 def download_if_missing():
     """Downloads model files from Google Drive if not present locally."""
@@ -70,7 +80,7 @@ def download_if_missing():
 
 @app.on_event("startup")
 def load_models():
-    global rf_model, scaler, iso_forest
+    global rf_model, scaler, iso_forest, shap_explainer
 
      # Download from Google Drive if files are missing
     download_if_missing()
@@ -85,6 +95,16 @@ def load_models():
         logger.info(f"   RF features      : {rf_model.n_features_in_}")
         logger.info(f"   Scaler features  : {scaler.n_features_in_}")
         logger.info(f"   IsoForest feats  : {iso_forest.n_features_in_}")
+
+        if SHAP_AVAILABLE:
+            try:
+                shap_explainer = shap.TreeExplainer(rf_model)
+                logger.info("✅ SHAP explainer initialized")
+            except Exception as e:
+                shap_explainer = None
+                logger.warning(f"⚠️  SHAP explainer initialization failed: {e}")
+        else:
+            logger.warning("⚠️  SHAP not installed; fallback XAI explanation will be used")
     except FileNotFoundError as e:
         logger.error(f"❌ Model file not found: {e}")
         logger.warning("Running in DEMO mode — heuristic predictions only")
@@ -122,6 +142,7 @@ CLASS_TO_LABEL = {
     2: "Moderate",
     3: "Healthy",
 }
+LABEL_TO_CLASS = {v: k for k, v in CLASS_TO_LABEL.items()}
 
 # Centre score for each class (used when probabilities unavailable)
 CLASS_TO_SCORE = {
@@ -163,6 +184,199 @@ class PredictionResponse(BaseModel):
     recommendations:  list[str]
     anomaly_detected: bool
     confidence:       float
+    shap_explanation: dict | None = None
+
+
+class FeedbackSample(BaseModel):
+    label: str
+    RPM: float
+    SPEED: float
+    THROTTLE_POS: float
+    MAF: float
+    SHORT_FUEL_TRIM_1: float
+    COOLANT_TEMP: float
+    INTAKE_TEMP: float
+    LONG_FUEL_TRIM_1: float
+    ENGINE_LOAD: float
+    FUEL_LEVEL: float
+    ELM_VOLTAGE: float
+    FUEL_USAGE_ML_MIN: float
+    FUEL_USED_TOTAL_ML: float
+    RELATIVE_THROTTLE_POS: float
+    ABSOLUTE_LOAD: float
+    INTAKE_PRESSURE: float
+
+
+class RetrainRequest(BaseModel):
+    samples: list[FeedbackSample]
+
+
+def build_fallback_explanation(features: np.ndarray, scaled: np.ndarray, predicted_class: int) -> dict:
+    """Build a deterministic fallback attribution when SHAP is unavailable."""
+    importances = np.asarray(getattr(rf_model, "feature_importances_", np.ones(len(FEATURE_ORDER))), dtype=float)
+    if importances.size != len(FEATURE_ORDER) or float(np.sum(importances)) == 0.0:
+        importances = np.ones(len(FEATURE_ORDER), dtype=float)
+
+    # Center scaled values around 0.5 to infer contribution direction.
+    centered = scaled[0] - 0.5
+    proxy_impacts = centered * importances
+
+    rows = []
+    for idx, feature_name in enumerate(FEATURE_ORDER):
+        impact = float(proxy_impacts[idx])
+        rows.append(
+            {
+                "feature": feature_name,
+                "value": float(features[0][idx]),
+                "impact": impact,
+                "direction": "increase" if impact >= 0 else "decrease",
+                "abs_impact": abs(impact),
+            }
+        )
+
+    ranked = sorted(rows, key=lambda x: x["abs_impact"], reverse=True)
+    top_positive = [r for r in ranked if r["impact"] > 0][:5]
+    top_negative = [r for r in ranked if r["impact"] < 0][:5]
+
+    return {
+        "method": "Fallback Feature Attribution",
+        "predicted_class": int(predicted_class),
+        "base_value": 0.5,
+        "top_positive": top_positive,
+        "top_negative": top_negative,
+        "top_features": ranked[:8],
+    }
+
+
+def build_shap_explanation(features: np.ndarray, scaled: np.ndarray, predicted_class: int) -> dict:
+    """Build a compact SHAP summary for the predicted class, with fallback output."""
+    if shap_explainer is None:
+        return build_fallback_explanation(features, scaled, predicted_class)
+
+    try:
+        class_index = int(np.where(rf_model.classes_ == predicted_class)[0][0])
+        shap_values_raw = shap_explainer.shap_values(features)
+        expected_raw = shap_explainer.expected_value
+
+        # SHAP output can vary by version/model type; normalize to 1D feature vector.
+        if isinstance(shap_values_raw, list):
+            feature_impacts = np.asarray(shap_values_raw[class_index][0], dtype=float)
+        else:
+            shap_arr = np.asarray(shap_values_raw)
+            if shap_arr.ndim == 3:
+                if shap_arr.shape[0] == 1:
+                    feature_impacts = shap_arr[0, :, class_index].astype(float)
+                else:
+                    feature_impacts = shap_arr[class_index, 0, :].astype(float)
+            else:
+                feature_impacts = shap_arr[0].astype(float)
+
+        if isinstance(expected_raw, (list, np.ndarray)):
+            base_value = float(np.asarray(expected_raw)[class_index])
+        else:
+            base_value = float(expected_raw)
+
+        rows = []
+        for idx, feature_name in enumerate(FEATURE_ORDER):
+            impact = float(feature_impacts[idx])
+            rows.append(
+                {
+                    "feature": feature_name,
+                    "value": float(features[0][idx]),
+                    "impact": impact,
+                    "direction": "increase" if impact >= 0 else "decrease",
+                    "abs_impact": abs(impact),
+                }
+            )
+
+        ranked = sorted(rows, key=lambda x: x["abs_impact"], reverse=True)
+        top_positive = [r for r in ranked if r["impact"] > 0][:5]
+        top_negative = [r for r in ranked if r["impact"] < 0][:5]
+
+        return {
+            "method": "SHAP TreeExplainer",
+            "predicted_class": int(predicted_class),
+            "base_value": base_value,
+            "top_positive": top_positive,
+            "top_negative": top_negative,
+            "top_features": ranked[:8],
+        }
+    except Exception as e:
+        logger.warning(f"⚠️  SHAP explanation generation failed: {e}")
+        return build_fallback_explanation(features, scaled, predicted_class)
+
+
+def rebuild_shap_explainer() -> None:
+    global shap_explainer
+    if SHAP_AVAILABLE and rf_model is not None:
+        try:
+            shap_explainer = shap.TreeExplainer(rf_model)
+            logger.info("✅ SHAP explainer refreshed")
+        except Exception as e:
+            shap_explainer = None
+            logger.warning(f"⚠️  SHAP refresh failed: {e}")
+    else:
+        shap_explainer = None
+
+
+def retrain_from_feedback(samples: list[FeedbackSample]) -> dict:
+    global rf_model, scaler
+
+    if not samples:
+        raise HTTPException(status_code=400, detail="No samples provided for retraining")
+
+    X = []
+    y = []
+    for sample in samples:
+        if sample.label not in LABEL_TO_CLASS:
+            continue
+        X.append([getattr(sample, f) for f in FEATURE_ORDER])
+        y.append(LABEL_TO_CLASS[sample.label])
+
+    if len(X) < 2:
+        raise HTTPException(status_code=400, detail="Not enough valid labeled samples")
+
+    unique_classes = sorted(set(y))
+    if len(unique_classes) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Retraining requires at least two distinct class labels",
+        )
+
+    X_arr = np.asarray(X, dtype=float)
+    y_arr = np.asarray(y, dtype=int)
+
+    new_scaler = MinMaxScaler()
+    X_scaled = new_scaler.fit_transform(X_arr)
+
+    new_model = RandomForestClassifier(
+        n_estimators=300,
+        random_state=42,
+        class_weight="balanced",
+        n_jobs=-1,
+    )
+    new_model.fit(X_scaled, y_arr)
+
+    model_path = os.getenv("MODEL_PATH", "rf_model.pkl")
+    scaler_path = os.getenv("SCALER_PATH", "scaler.pkl")
+    joblib.dump(new_model, model_path)
+    joblib.dump(new_scaler, scaler_path)
+
+    rf_model = new_model
+    scaler = new_scaler
+    rebuild_shap_explainer()
+
+    class_distribution = {
+        CLASS_TO_LABEL[int(cls)]: int(np.sum(y_arr == cls)) for cls in unique_classes
+    }
+
+    return {
+        "status": "retrained",
+        "sample_count": int(len(X_arr)),
+        "class_distribution": class_distribution,
+        "model_path": model_path,
+        "scaler_path": scaler_path,
+    }
 
 
 # ─── Risk details ─────────────────────────────────────────────────────────────
@@ -241,6 +455,8 @@ def predict(data: SensorInput):
         logger.info(f"Health score  : {health_score:.1f}")
         logger.info(f"Confidence    : {confidence:.2%}")
 
+        shap_explanation = build_shap_explanation(features, scaled, predicted_class)
+
         # ── Step 4: Isolation Forest anomaly check ───────────────────────────
         anomaly_detected = False
         if iso_forest is not None:
@@ -271,6 +487,7 @@ def predict(data: SensorInput):
             recommendations=recommendations,
             anomaly_detected=anomaly_detected,
             confidence=round(confidence * 100, 1),
+            shap_explanation=shap_explanation,
         )
 
     except HTTPException:
@@ -289,6 +506,18 @@ def health():
         "scaler_loaded":      scaler     is not None,
         "iso_forest_loaded":  iso_forest is not None,
     }
+
+
+@app.post("/retrain")
+def retrain(payload: RetrainRequest):
+    try:
+        result = retrain_from_feedback(payload.samples)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Retrain error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
 def root():

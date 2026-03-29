@@ -5,6 +5,14 @@ import api from "../services/api";
 
 const AuthContext = createContext(null);
 
+const toAppUser = (firebaseUser, role = "user") => ({
+  uid: firebaseUser.uid,
+  email: firebaseUser.email,
+  displayName: firebaseUser.displayName,
+  photoURL: firebaseUser.photoURL,
+  role,
+});
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -12,22 +20,35 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        setUser(firebaseUser);
-  //       
-  // Fire and forget — don't await, don't block login
-      api.post("/users/sync", {
-        googleId: firebaseUser.uid,
-        email: firebaseUser.email,
-        name: firebaseUser.displayName,
-        photoURL: firebaseUser.photoURL,
-      }, { timeout: 30000 }).catch((e) => console.warn("User sync failed:", e.message));
-    } else {
-      setUser(null);
-    }
-    setLoading(false);
-  });
-  return unsub;
-}, []);
+        setUser(toAppUser(firebaseUser, "user"));
+
+        // Fire and forget sync; update role when backend responds.
+        api
+          .post(
+            "/users/sync",
+            {
+              googleId: firebaseUser.uid,
+              email: firebaseUser.email,
+              name: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+            },
+            { timeout: 30000 }
+          )
+          .then((res) => {
+            const role = res?.data?.user?.role || "user";
+            setUser((prev) => {
+              if (!prev || prev.uid !== firebaseUser.uid) return prev;
+              return { ...prev, role };
+            });
+          })
+          .catch((e) => console.warn("User sync failed:", e.message));
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+    return unsub;
+  }, []);
 
   const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
   const logout = () => signOut(auth);

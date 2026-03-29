@@ -8,6 +8,7 @@ import DashboardPage from "./pages/DashboardPage";
 import ResultPage from "./pages/ResultPage";
 import HistoryPage from "./pages/HistoryPage";
 import ManualPage from "./pages/ManualPage";
+import AdminRetrainPage from "./pages/AdminRetrainPage";
 import Layout from "./components/Layout";
 
 function ProtectedRoute({ children }) {
@@ -40,6 +41,9 @@ function App() {
             } />
             <Route path="history" element={
               <ProtectedRoute><HistoryPage /></ProtectedRoute>
+            } />
+            <Route path="admin/retrain" element={
+              <ProtectedRoute><AdminRetrainPage /></ProtectedRoute>
             } />
           </Route>
         </Routes>
