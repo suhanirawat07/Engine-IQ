@@ -4,6 +4,7 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const cors = require("cors");
+const mongoose = require("mongoose");
 
 const connectDB = require("./config/db");
 const predictRoutes = require("./routes/predict");
@@ -80,6 +81,23 @@ const limiter = rateLimit({
 });
 app.use("/api/", limiter);
 
+const isDbConnected = () => mongoose.connection.readyState === 1;
+
+app.use("/api", (req, res, next) => {
+  if (req.path === "/" || req.path === "/health") {
+    return next();
+  }
+
+  if (!isDbConnected()) {
+    return res.status(503).json({
+      error: "Database unavailable. Please retry shortly.",
+      dbState: mongoose.connection.readyState,
+    });
+  }
+
+  return next();
+});
+
 // ─── Database ─────────────────────────────────────────────────────────────────
 connectDB();
 
@@ -93,7 +111,12 @@ app.get("/", (req, res) => {
 });
 
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    dbConnected: isDbConnected(),
+    dbState: mongoose.connection.readyState,
+  });
 });
 
 app.get("/api", (req, res) => {

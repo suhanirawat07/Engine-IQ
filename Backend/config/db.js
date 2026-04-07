@@ -2,6 +2,9 @@ const mongoose = require("mongoose");
 
 const RETRY_DELAY_MS = Math.max(parseInt(process.env.DB_RETRY_DELAY_MS, 10) || 10000, 1000);
 
+// Fail fast instead of buffering model operations when DB is disconnected.
+mongoose.set("bufferCommands", false);
+
 const connectDB = async () => {
   try {
     const uri = process.env.MONGODB_URI;
