@@ -29,15 +29,31 @@ const allowedOrigins = new Set([
   ...envOrigins,
 ]);
 
-const vercelPreviewPattern = /^https:\/\/engine-iq[\w-]*\.vercel\.app$/i;
+const vercelDomainPattern = /^https:\/\/[\w-]+\.vercel\.app$/i;
+const renderDomainPattern = /^https:\/\/[\w-]+\.onrender\.com$/i;
+
+const normalizeOrigin = (origin) => {
+  try {
+    const parsed = new URL(origin);
+    const defaultPort =
+      (parsed.protocol === "https:" && parsed.port === "443") ||
+      (parsed.protocol === "http:" && parsed.port === "80");
+    const portSegment = parsed.port && !defaultPort ? `:${parsed.port}` : "";
+    return `${parsed.protocol}//${parsed.hostname}${portSegment}`;
+  } catch {
+    return origin.replace(/\/$/, "");
+  }
+};
 
 app.use(
   cors({
     origin(origin, callback) {
       if (!origin) return callback(null, true);
-      const cleanOrigin = origin.replace(/\/$/, "");
+      const cleanOrigin = normalizeOrigin(origin);
       const isAllowed =
-        allowedOrigins.has(cleanOrigin) || vercelPreviewPattern.test(cleanOrigin);
+        allowedOrigins.has(cleanOrigin) ||
+        vercelDomainPattern.test(cleanOrigin) ||
+        renderDomainPattern.test(cleanOrigin);
 
       if (!isAllowed) {
         console.warn("Blocked CORS origin:", cleanOrigin);
