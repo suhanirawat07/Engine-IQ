@@ -34,7 +34,7 @@ export default function Layout() {
     <div className="min-h-screen app-shell font-sans">
       {/* ── Navbar ── */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/70 dark:bg-slate-900/75 backdrop-blur-md border-b border-stone-300 dark:border-slate-700 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           {/* Logo */}
           <NavLink to="/" className="flex items-center gap-2 group">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-sm font-bold shadow-lg shadow-amber-500/30">
@@ -47,7 +47,7 @@ export default function Layout() {
           </NavLink>
 
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
             {navItems.map(({ to, label, exact }) => (
               <NavLink
                 key={to}
