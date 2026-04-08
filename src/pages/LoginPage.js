@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import RevealSection from "../components/RevealSection";
 
 const getFirebaseLoginErrorMessage = (err) => {
   const code = err?.code || "";
@@ -51,22 +52,22 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-8">
+      <RevealSection className="w-full max-w-md" threshold={0.2}>
         {/* Card */}
-        <div className="bg-transparent border border-[#44403c] rounded-2xl p-8 shadow-2xl shadow-black/50">
+        <div className="card-surface rounded-2xl p-8 shadow-2xl shadow-black/10 dark:shadow-black/50 transition-colors duration-300">
           {/* Logo */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-2xl mx-auto mb-4 shadow-lg shadow-amber-500/30">
               ⚡
             </div>
-            <h1 className="text-2xl font-black text-stone-900">Welcome to EngineScan</h1>
-            <p className="text-stone-500 text-sm mt-2">Sign in to access your engine diagnostics dashboard</p>
+            <h1 className="text-3xl font-black text-stone-900 dark:text-stone-100">Welcome to EngineScan</h1>
+            <p className="text-stone-600 dark:text-stone-300 text-sm mt-2 leading-relaxed">Sign in to access your engine diagnostics dashboard</p>
           </div>
 
           {/* Error */}
           {error && (
-            <div className="mb-6 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm text-center">
+            <div className="mb-6 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-500 dark:text-red-300 text-sm text-center" role="alert">
               {error}
             </div>
           )}
@@ -75,10 +76,14 @@ export default function LoginPage() {
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white hover:bg-gray-100 text-gray-900 font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:scale-[1.02]"
+            className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white dark:bg-slate-100 hover:bg-gray-100 dark:hover:bg-white text-gray-900 font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+            aria-busy={loading}
           >
             {loading ? (
-              <div className="w-5 h-5 border-2 border-gray-400 border-t-gray-700 rounded-full animate-spin" />
+              <>
+                <div className="w-5 h-5 border-2 border-gray-400 border-t-gray-700 rounded-full animate-spin" aria-hidden="true" />
+                <span className="sr-only">Signing in, please wait</span>
+              </>
             ) : (
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -90,7 +95,7 @@ export default function LoginPage() {
             {loading ? "Signing in..." : "Continue with Google"}
           </button>
 
-          <p className="text-center text-xs text-stone-400 mt-6">
+          <p className="text-center text-xs text-stone-500 dark:text-stone-400 mt-6">
             By signing in, you agree to our terms of service. Your prediction data is stored securely.
           </p>
         </div>
@@ -98,12 +103,12 @@ export default function LoginPage() {
         {/* Info */}
         <div className="mt-6 flex flex-col gap-3">
           {["Secure Google OAuth authentication", "Prediction history saved to your account", "No passwords required"].map(txt => (
-            <div key={txt} className="flex items-center gap-2 text-xs text-stone-400">
+            <div key={txt} className="flex items-center gap-2 text-xs text-stone-600 dark:text-stone-300">
               <span className="text-cyan-500">✓</span> {txt}
             </div>
           ))}
         </div>
-      </div>
+      </RevealSection>
     </div>
   );
 }

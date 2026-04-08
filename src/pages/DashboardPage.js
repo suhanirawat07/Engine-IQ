@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { SENSORS, SENSOR_CATEGORIES } from "../services/sensorMeta";
@@ -8,8 +8,8 @@ import {
   isLocalApiTarget,
   submitPrediction,
 } from "../services/api";
-import { useEffect } from "react";
 import axios from "axios";
+import RevealSection from "../components/RevealSection";
 
 const getDefaults = () => {
   const obj = {};
@@ -119,58 +119,59 @@ export default function DashboardPage() {
   const progress = Math.round((filledCount / SENSORS.length) * 100);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-stone-900 mb-2">Engine Diagnostic Form</h1>
-        <p className="text-stone-500 text-sm">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+      <RevealSection className="mb-8">
+        <h1 className="text-4xl sm:text-5xl font-black text-stone-900 dark:text-stone-100 mb-2 tracking-tight">Engine Diagnostic Form</h1>
+        <p className="text-stone-600 dark:text-stone-300 text-base sm:text-lg leading-relaxed max-w-3xl">
           Enter all 16 OBD-II sensor readings from your vehicle diagnostic tool.
         </p>
-      </div>
+      </RevealSection>
 
-      <div className="bg-transparent border border-[#44403c] rounded-xl p-4 mb-6">
+      <RevealSection className="card-surface rounded-xl p-4 mb-6" threshold={0.2}>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs text-stone-500 font-mono">FIELDS COMPLETED</span>
-          <span className="text-xs font-bold text-amber-400">{filledCount} / {SENSORS.length}</span>
+          <span className="text-xs text-stone-600 dark:text-stone-300 font-mono tracking-wide">FIELDS COMPLETED</span>
+          <span className="text-xs font-bold text-amber-500 dark:text-amber-300">{filledCount} / {SENSORS.length}</span>
         </div>
-        <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
+        <div className="h-2 bg-stone-100 dark:bg-slate-700 rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-300"
+            className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-300 ease-in-out"
             style={{ width: `${progress}%` }}
           />
         </div>
-      </div>
+      </RevealSection>
 
-      <div className="flex flex-wrap gap-2 mb-6">
+      <RevealSection className="flex flex-wrap gap-2 mb-6" threshold={0.2}>
         {["All", ...SENSOR_CATEGORIES].map((cat) => (
           <button
             key={cat}
             type="button"
             onClick={() => setActiveCategory(cat)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-cyan-500/40 ${
               activeCategory === cat
-                ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
-                : "bg-stone-100 text-stone-500 border border-stone-300 hover:border-gray-600"
+                ? "bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/40"
+                : "bg-stone-100 dark:bg-slate-800 text-stone-600 dark:text-stone-300 border border-stone-300 dark:border-slate-600 hover:border-stone-500 dark:hover:border-slate-400"
             }`}
           >
             {cat}
           </button>
         ))}
-      </div>
+      </RevealSection>
 
       {apiError && (
-        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-500 dark:text-red-300 text-sm" role="alert">
           <span className="font-semibold">Error: </span>{apiError}
         </div>
       )}
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      <RevealSection threshold={0.2}>
+      <form onSubmit={handleSubmit} noValidate>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 mb-8">
           {filteredSensors.map((sensor) => (
             <div key={sensor.key} className="relative">
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center justify-between mb-2">
                 <label
                   htmlFor={sensor.key}
-                  className="text-xs font-semibold text-stone-700 flex items-center gap-1.5"
+                  className="text-sm font-semibold text-stone-800 dark:text-stone-200 flex items-center gap-1.5"
                 >
                   <span>{sensor.icon}</span>
                   {sensor.label}
@@ -179,15 +180,16 @@ export default function DashboardPage() {
                   type="button"
                   onMouseEnter={() => setTooltip(sensor.key)}
                   onMouseLeave={() => setTooltip(null)}
-                  className="w-4 h-4 rounded-full bg-stone-200 hover:bg-amber-500/30 text-stone-500 hover:text-amber-400 text-[10px] flex items-center justify-center transition-colors flex-shrink-0"
+                  className="w-5 h-5 rounded-full bg-stone-200 dark:bg-slate-700 hover:bg-amber-500/30 text-stone-600 dark:text-stone-300 hover:text-amber-500 dark:hover:text-amber-300 text-[10px] flex items-center justify-center transition-colors duration-200 flex-shrink-0"
+                  aria-label={`Show help for ${sensor.label}`}
                 >
                   ?
                 </button>
                 {tooltip === sensor.key && (
-                  <div className="absolute right-0 top-6 z-50 w-64 bg-stone-100 border border-stone-300 rounded-xl p-3 shadow-xl text-xs text-stone-700 leading-relaxed">
-                    <p className="font-semibold text-amber-400 mb-1">{sensor.label}</p>
+                  <div className="absolute right-0 top-7 z-50 w-64 bg-stone-100 dark:bg-slate-800 border border-stone-300 dark:border-slate-600 rounded-xl p-3 shadow-xl text-xs text-stone-700 dark:text-stone-200 leading-relaxed">
+                    <p className="font-semibold text-amber-600 dark:text-amber-300 mb-1">{sensor.label}</p>
                     {sensor.tooltip}
-                    <p className="mt-2 text-stone-400">Range: {sensor.min} – {sensor.max} {sensor.unit}</p>
+                    <p className="mt-2 text-stone-500 dark:text-stone-400">Range: {sensor.min} – {sensor.max} {sensor.unit}</p>
                   </div>
                 )}
               </div>
@@ -200,27 +202,32 @@ export default function DashboardPage() {
                   step={sensor.step}
                   value={values[sensor.key]}
                   onChange={(e) => handleChange(sensor.key, e.target.value)}
-                  className={`w-full bg-stone-100 border ${
+                  aria-invalid={Boolean(errors[sensor.key])}
+                  aria-describedby={`${sensor.key}-help ${errors[sensor.key] ? `${sensor.key}-error` : ""}`.trim()}
+                  className={`w-full bg-stone-100 dark:bg-slate-800 border ${
                     errors[sensor.key]
-                      ? "border-red-500/70"
-                      : "border-stone-300 focus:border-amber-500/70"
-                  } rounded-lg px-3 py-2.5 text-sm text-stone-900 focus:outline-none focus:ring-1 ${
-                    errors[sensor.key] ? "focus:ring-red-500/30" : "focus:ring-amber-500/30"
-                  } transition-all pr-16`}
+                      ? "border-red-500/80"
+                      : "border-stone-300 dark:border-slate-600 focus:border-cyan-500"
+                  } rounded-lg px-3 py-3 text-base text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 ${
+                    errors[sensor.key] ? "focus:ring-red-500/30" : "focus:ring-cyan-500/30"
+                  } transition-all duration-200 ease-in-out pr-16`}
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-mono pointer-events-none">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-500 dark:text-stone-400 font-mono pointer-events-none">
                   {sensor.unit}
                 </span>
               </div>
+              <p id={`${sensor.key}-help`} className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+                Expected range: {sensor.min} to {sensor.max} {sensor.unit}
+              </p>
               {errors[sensor.key] && (
-                <p className="mt-1 text-xs text-red-400">{errors[sensor.key]}</p>
+                <p id={`${sensor.key}-error`} className="mt-1 text-xs text-red-500 dark:text-red-300">{errors[sensor.key]}</p>
               )}
             </div>
           ))}
         </div>
 
         {Object.keys(errors).length > 0 && (
-          <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-yellow-400 text-sm">
+          <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-yellow-700 dark:text-yellow-300 text-sm" role="alert">
             ⚠️ {Object.keys(errors).length} field(s) need attention.
           </div>
         )}
@@ -229,11 +236,12 @@ export default function DashboardPage() {
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 py-4 bg-amber-500 hover:bg-cyan-400 disabled:bg-amber-500/50 text-gray-950 font-bold rounded-xl transition-all shadow-lg shadow-amber-500/20 text-sm disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="flex-1 py-4 bg-amber-500 hover:bg-cyan-400 disabled:bg-amber-500/50 text-gray-950 font-bold rounded-xl transition-all duration-200 ease-in-out shadow-lg shadow-amber-500/20 text-sm disabled:cursor-not-allowed flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+            aria-busy={loading}
           >
             {loading ? (
               <>
-                <div className="w-4 h-4 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
                 Waking up server, please wait...
               </>
             ) : (
@@ -243,12 +251,13 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={handleReset}
-            className="px-6 py-4 bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold rounded-xl transition-all text-sm border border-stone-300"
+            className="px-6 py-4 bg-stone-100 dark:bg-slate-800 hover:bg-stone-200 dark:hover:bg-slate-700 text-stone-700 dark:text-stone-200 font-semibold rounded-xl transition-all duration-200 ease-in-out text-sm border border-stone-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
           >
             Reset Defaults
           </button>
         </div>
       </form>
+      </RevealSection>
     </div>
   );
 }

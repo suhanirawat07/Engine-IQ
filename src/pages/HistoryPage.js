@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContai
 import { useAuth } from "../hooks/useAuth";
 import { fetchHistory, deletePrediction } from "../services/api";
 import { RISK_CONFIG } from "../services/sensorMeta";
+import RevealSection from "../components/RevealSection";
 
 const RISK_COLORS = {
   Healthy: "#22c55e",
@@ -64,61 +65,72 @@ export default function HistoryPage() {
       date: new Date(p.createdAt).toLocaleDateString(),
     }));
 
+  const chartSummary = chartData.length
+    ? `Health score trend for ${chartData.length} scans. Latest score ${chartData[chartData.length - 1].health_score?.toFixed(1)} on ${chartData[chartData.length - 1].date}.`
+    : "Health score trend chart with no data available.";
+
   if (loading) return (
-    <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="flex items-center justify-center min-h-[60vh]" role="status" aria-live="polite" aria-busy="true">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
         <p className="text-stone-500 text-sm">Loading history...</p>
       </div>
     </div>
   );
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10">
+    <div className="max-w-5xl mx-auto px-3 sm:px-6 py-10">
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
+      <RevealSection className="mb-8 flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-black text-stone-900">Prediction History</h1>
-          <p className="text-stone-500 text-sm mt-1">{predictions.length} scans recorded</p>
+          <h1 className="text-4xl sm:text-5xl font-black text-stone-900 dark:text-stone-100 tracking-tight">Prediction History</h1>
+          <p className="text-stone-600 dark:text-stone-300 text-sm mt-1">{predictions.length} scans recorded</p>
         </div>
         <button
           onClick={() => navigate("/dashboard")}
-          className="px-4 py-2 bg-amber-500 text-gray-950 font-bold rounded-xl text-sm hover:bg-cyan-400 transition-all"
+          className="px-4 py-2 bg-amber-500 text-gray-950 font-bold rounded-xl text-sm hover:bg-cyan-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
         >
           + New Scan
         </button>
-      </div>
+      </RevealSection>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">{error}</div>
+        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-500 dark:text-red-300 text-sm" role="alert">{error}</div>
       )}
 
       {predictions.length === 0 ? (
-        <div className="bg-[#292524] border border-[#44403c] rounded-2xl p-16 text-center">
+        <RevealSection className="card-surface rounded-2xl p-16 text-center" threshold={0.2}>
           <div className="text-5xl mb-4">📋</div>
-          <p className="text-stone-500 mb-6">No predictions yet. Run your first diagnostic scan!</p>
+          <p className="text-stone-600 dark:text-stone-300 mb-6">No predictions yet. Run your first diagnostic scan!</p>
           <button
             onClick={() => navigate("/dashboard")}
-            className="px-6 py-3 bg-amber-500 text-gray-950 font-bold rounded-xl text-sm"
+            className="px-6 py-3 bg-amber-500 text-gray-950 font-bold rounded-xl text-sm hover:bg-cyan-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
           >
             Start Scanning
           </button>
-        </div>
+        </RevealSection>
       ) : (
         <>
           {/* Trend chart */}
-          <div className="bg-transparent border border-[#44403c] rounded-2xl p-6 mb-6">
-            <h2 className="font-bold text-stone-900 mb-1">Health Score Trend</h2>
-            <p className="text-xs text-stone-400 mb-6">History of your engine health scores over time</p>
+          <RevealSection className="card-surface rounded-2xl p-4 sm:p-6 mb-6" threshold={0.2}>
+            <h2 id="history-chart-title" className="font-bold text-stone-900 dark:text-stone-100 mb-1">Health Score Trend</h2>
+            <p id="history-chart-desc" className="text-xs text-stone-500 dark:text-stone-400 mb-6">
+              History of your engine health scores over time
+            </p>
+            <div
+              role="img"
+              aria-labelledby="history-chart-title"
+              aria-describedby="history-chart-desc history-chart-summary"
+            >
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                <XAxis dataKey="date" tick={{ fill: "#6b7280", fontSize: 11 }} />
-                <YAxis domain={[0, 100]} tick={{ fill: "#6b7280", fontSize: 11 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#475569" strokeOpacity={0.35} />
+                <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} interval={0} tickMargin={10} minTickGap={12} />
+                <YAxis domain={[0, 100]} tick={{ fill: "#94a3b8", fontSize: 10 }} width={32} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: "#111827", border: "1px solid #374151", borderRadius: 8 }}
-                  labelStyle={{ color: "#9ca3af" }}
-                  itemStyle={{ color: "#22d3ee" }}
+                  contentStyle={{ backgroundColor: "#0f172a", border: "1px solid #334155", borderRadius: 10, fontSize: 12 }}
+                  labelStyle={{ color: "#e2e8f0" }}
+                  itemStyle={{ color: "#67e8f9" }}
                 />
                 <ReferenceLine y={75} stroke="#22c55e" strokeDasharray="4 4" label={{ value: "Healthy", fill: "#22c55e", fontSize: 10 }} />
                 <ReferenceLine y={50} stroke="#eab308" strokeDasharray="4 4" label={{ value: "Moderate", fill: "#eab308", fontSize: 10 }} />
@@ -133,37 +145,46 @@ export default function HistoryPage() {
                 />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+            </div>
+            <p id="history-chart-summary" className="sr-only">
+              {chartSummary}
+            </p>
+          </RevealSection>
 
           {/* Table */}
-          <div className="bg-[#292524] border border-[#44403c] rounded-2xl overflow-hidden">
+          <RevealSection className="card-surface rounded-2xl overflow-hidden" threshold={0.2}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
+                <caption className="sr-only">
+                  Prediction history with date, score, risk level, and visible sensor columns.
+                </caption>
                 <thead>
-                  <tr className="border-b border-[#44403c] bg-[#292524]/80">
-                    <th className="text-left text-xs font-semibold text-stone-400 px-4 py-3">DATE</th>
-                    <th className="text-left text-xs font-semibold text-stone-400 px-4 py-3">SCORE</th>
-                    <th className="text-left text-xs font-semibold text-stone-400 px-4 py-3">RISK LEVEL</th>
-                    <th className="text-left text-xs font-semibold text-stone-400 px-4 py-3 hidden md:table-cell">RPM</th>
-                    <th className="text-left text-xs font-semibold text-stone-400 px-4 py-3 hidden md:table-cell">COOLANT</th>
-                    <th className="text-left text-xs font-semibold text-stone-400 px-4 py-3 hidden lg:table-cell">VOLTAGE</th>
-                    <th className="text-left text-xs font-semibold text-stone-400 px-4 py-3"></th>
+                  <tr className="border-b border-stone-300 dark:border-slate-700 bg-stone-100/70 dark:bg-slate-900/60">
+                    <th scope="col" className="text-left text-xs font-semibold text-stone-500 dark:text-stone-400 px-4 py-3">DATE</th>
+                    <th scope="col" className="text-left text-xs font-semibold text-stone-500 dark:text-stone-400 px-4 py-3">SCORE</th>
+                    <th scope="col" className="text-left text-xs font-semibold text-stone-500 dark:text-stone-400 px-4 py-3">RISK LEVEL</th>
+                    <th scope="col" className="text-left text-xs font-semibold text-stone-500 dark:text-stone-400 px-4 py-3 hidden md:table-cell">RPM</th>
+                    <th scope="col" className="text-left text-xs font-semibold text-stone-500 dark:text-stone-400 px-4 py-3 hidden md:table-cell">COOLANT</th>
+                    <th scope="col" className="text-left text-xs font-semibold text-stone-500 dark:text-stone-400 px-4 py-3 hidden lg:table-cell">VOLTAGE</th>
+                    <th scope="col" className="text-left text-xs font-semibold text-stone-500 dark:text-stone-400 px-4 py-3">
+                      <span className="sr-only">Actions</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {predictions.map((p) => {
                     const cfg = RISK_CONFIG[p.risk_level] || RISK_CONFIG["Healthy"];
                     return (
-                      <tr key={p._id} className="border-b border-[#44403c]/50 hover:bg-stone-100/30 transition-colors">
-                        <td className="px-4 py-3 text-stone-500 text-xs">
+                      <tr key={p._id} className="border-b border-stone-300/70 dark:border-slate-700/70 hover:bg-stone-100/60 dark:hover:bg-slate-800/50 transition-colors duration-200">
+                        <th scope="row" className="px-3 sm:px-4 py-2.5 text-stone-600 dark:text-stone-300 text-xs leading-tight font-normal text-left">
                           {new Date(p.createdAt).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3">
+                        </th>
+                        <td className="px-3 sm:px-4 py-2.5">
                           <span className="font-bold" style={{ color: cfg.color }}>
                             {p.health_score.toFixed(1)}
                           </span>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-2.5">
                           <span
                             className="px-2 py-0.5 rounded-full text-xs font-semibold text-gray-950"
                             style={{ backgroundColor: cfg.color }}
@@ -171,14 +192,15 @@ export default function HistoryPage() {
                             {p.risk_level}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-stone-500 hidden md:table-cell">{p.RPM}</td>
-                        <td className="px-4 py-3 text-stone-500 hidden md:table-cell">{p.COOLANT_TEMP}°C</td>
-                        <td className="px-4 py-3 text-stone-500 hidden lg:table-cell">{p.ELM_VOLTAGE}V</td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-2.5 text-stone-600 dark:text-stone-300 hidden md:table-cell">{p.RPM}</td>
+                        <td className="px-3 sm:px-4 py-2.5 text-stone-600 dark:text-stone-300 hidden md:table-cell">{p.COOLANT_TEMP}°C</td>
+                        <td className="px-3 sm:px-4 py-2.5 text-stone-600 dark:text-stone-300 hidden lg:table-cell">{p.ELM_VOLTAGE}V</td>
+                        <td className="px-3 sm:px-4 py-2.5">
                           <button
                             onClick={() => handleDelete(p._id)}
                             disabled={deleting === p._id}
-                            className="text-xs text-stone-400 hover:text-red-400 transition-colors disabled:opacity-50"
+                            aria-label={`Delete prediction from ${new Date(p.createdAt).toLocaleString()}`}
+                            className="text-xs text-stone-500 dark:text-stone-400 hover:text-red-500 dark:hover:text-red-300 transition-colors duration-200 disabled:opacity-50"
                           >
                             {deleting === p._id ? "..." : "✕"}
                           </button>
@@ -189,7 +211,7 @@ export default function HistoryPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </RevealSection>
         </>
       )}
     </div>

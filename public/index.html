@@ -8,6 +8,20 @@
   <meta name="description"
     content="Hybrid Intelligent Engine Health Monitoring System — ML-powered OBD-II diagnostics" />
   <title>Engine-IQ</title>
+  <script>
+    (function () {
+      try {
+        var savedTheme = localStorage.getItem("engineiq-theme");
+        var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = savedTheme === "light" || savedTheme === "dark" ? savedTheme : (prefersDark ? "dark" : "light");
+        document.documentElement.classList.toggle("dark", theme === "dark");
+        document.documentElement.setAttribute("data-theme", theme);
+      } catch (e) {
+        document.documentElement.classList.remove("dark");
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
