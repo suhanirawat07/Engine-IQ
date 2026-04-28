@@ -15,6 +15,8 @@ const api = axios.create({
 });
 
 export const submitPrediction = (payload) => api.post("/predict", payload);
+export const fetchShapExplanation = (sensorData) => 
+  api.post("/predict/explain", sensorData, { timeout: 60000 });
 export const fetchHistory = (userId, limit = 20, skip = 0) =>
   api.get(`/predict/history/${userId}?limit=${limit}&skip=${skip}`);
 export const deletePrediction = (id, userId) =>

@@ -424,7 +424,7 @@ def get_risk_details(risk_level: str) -> tuple[str, list[str]]:
 
 # ─── Predict endpoint ─────────────────────────────────────────────────────────
 @app.post("/predict", response_model=PredictionResponse)
-def predict(data: SensorInput):
+def predict(data: SensorInput, skip_shap: bool = False):
     try:
         # Build feature array in the exact order the scaler was trained on
         features = np.array([[getattr(data, f) for f in FEATURE_ORDER]])
@@ -455,7 +455,11 @@ def predict(data: SensorInput):
         logger.info(f"Health score  : {health_score:.1f}")
         logger.info(f"Confidence    : {confidence:.2%}")
 
-        shap_explanation = build_shap_explanation(features, scaled, predicted_class)
+        # Compute SHAP explanation only when requested to keep /predict fast
+        if skip_shap:
+            shap_explanation = None
+        else:
+            shap_explanation = build_shap_explanation(features, scaled, predicted_class)
 
         # ── Step 4: Isolation Forest anomaly check ───────────────────────────
         anomaly_detected = False
@@ -498,6 +502,38 @@ def predict(data: SensorInput):
 
 
 # ─── Health check ─────────────────────────────────────────────────────────────
+# ─── Get SHAP explanation endpoint (on-demand) ────────────────────────────
+@app.post("/explain")
+def get_explanation(data: SensorInput):
+    """
+    Fetch SHAP explanation for a prediction on-demand.
+    This is separated from /predict for faster initial response.
+    """
+    try:
+        if rf_model is None or scaler is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Models not loaded."
+            )
+
+        features = np.array([[getattr(data, f) for f in FEATURE_ORDER]])
+        scaled = scaler.transform(features)
+        predicted_class = int(rf_model.predict(scaled)[0])
+
+        logger.info(f"Generating SHAP explanation for class {predicted_class}")
+        shap_explanation = build_shap_explanation(features, scaled, predicted_class)
+
+        return {
+            "success": True,
+            "shap_explanation": shap_explanation,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Explanation error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/health")
 def health():
     return {

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const {
 	predict,
+	explainPrediction,
 	getHistory,
 	deletePrediction,
 	submitFeedback,
@@ -10,6 +11,7 @@ const {
 } = require("../controllers/predictController");
 
 router.post("/", predict);
+router.post("/explain", explainPrediction);
 router.get("/history/:userId", getHistory);
 router.get("/retrain/stats", getRetrainStats);
 router.post("/retrain", retrainFromFeedback);

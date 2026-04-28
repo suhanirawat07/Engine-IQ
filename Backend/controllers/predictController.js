@@ -115,9 +115,9 @@ exports.predict = async (req, res) => {
       mlPayload[field] = parseFloat(sensorData[field]);
     }
 
-    // Call Python ML API
+    // Call Python ML API (skip SHAP initially for faster response)
     const mlResponse = await axios.post(
-      `${process.env.ML_API_URL}/predict`,
+      `${process.env.ML_API_URL}/predict?skip_shap=true`,
       mlPayload,
       { timeout: 120000 }
     );
@@ -130,21 +130,11 @@ exports.predict = async (req, res) => {
       shap_explanation,
     } = mlResponse.data;
 
-    // Persist to MongoDB (only if userId provided)
-    let saved = null;
-    if (userId) {
-      saved = await Prediction.create({
-        userId,
-        ...mlPayload,
-        health_score,
-        risk_level,
-        risk_description,
-        recommendations,
-        shap_explanation,
-      });
-    }
+    // Return prediction immediately without waiting for MongoDB
+    const predictionId = require('crypto').randomBytes(12).toString('hex');
+    const createdAt = new Date().toISOString();
 
-    return res.json({
+    res.json({
       success: true,
       prediction: {
         risk_level,
@@ -152,14 +142,75 @@ exports.predict = async (req, res) => {
         risk_description,
         recommendations,
         shap_explanation,
-        id: saved?._id,
-        createdAt: saved?.createdAt || new Date().toISOString(),
+        id: predictionId,
+        createdAt,
+        sensorData: mlPayload, // Include sensor data for later SHAP fetch
       },
     });
+
+    // Save to MongoDB in background (fire and forget)
+    if (userId) {
+      setImmediate(() => {
+        Prediction.create({
+          userId,
+          ...mlPayload,
+          health_score,
+          risk_level,
+          risk_description,
+          recommendations,
+          shap_explanation,
+        }).catch(err => console.error('[Async Save Error]', err.message));
+      });
+    }
   } catch (err) {
     console.error("Predict error:", err.message);
     if (err.code === "ECONNREFUSED") {
       return res.status(503).json({ error: "ML API unavailable. Please ensure the Python server is running." });
+    }
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * POST /api/predict/explain
+ * Fetches SHAP explanation on-demand for sensor data.
+ */
+exports.explainPrediction = async (req, res) => {
+  try {
+    const { userId, ...sensorData } = req.body;
+
+    // Validate all 16 fields are present
+    const missing = SENSOR_FIELDS.filter(
+      (f) => sensorData[f] === undefined || sensorData[f] === null
+    );
+    if (missing.length) {
+      return res.status(400).json({ error: `Missing fields: ${missing.join(", ")}` });
+    }
+
+    // Build payload for ML API
+    const mlPayload = {};
+    for (const field of SENSOR_FIELDS) {
+      mlPayload[field] = parseFloat(sensorData[field]);
+    }
+
+    // Call Python ML API for SHAP explanation
+    const mlResponse = await axios.post(
+      `${process.env.ML_API_URL}/explain`,
+      mlPayload,
+      { timeout: 60000 }
+    );
+
+    return res.json({
+      success: true,
+      shap_explanation: mlResponse.data?.shap_explanation || null,
+    });
+  } catch (err) {
+    console.error("Explain error:", err.message);
+    if (err.code === "ECONNREFUSED") {
+      return res.status(503).json({ error: "ML API unavailable. Please ensure the Python server is running." });
+    }
+    if (err.code === "ECONNABORTED") {
+      return res.status(504).json({ error: "SHAP explanation generation timed out. Please try again." });
     }
     return res.status(500).json({ error: err.message });
   }
