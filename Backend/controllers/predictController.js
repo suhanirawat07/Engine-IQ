@@ -130,10 +130,42 @@ exports.predict = async (req, res) => {
       shap_explanation,
     } = mlResponse.data;
 
-    // Return prediction immediately without waiting for MongoDB
-    const predictionId = require('crypto').randomBytes(12).toString('hex');
+    // Save to MongoDB and return DB id when user is logged in
     const createdAt = new Date().toISOString();
 
+    if (userId) {
+      try {
+        const saved = await Prediction.create({
+          userId,
+          ...mlPayload,
+          health_score,
+          risk_level,
+          risk_description,
+          recommendations,
+          shap_explanation,
+        });
+
+        return res.json({
+          success: true,
+          prediction: {
+            _id: saved._id,
+            id: saved._id, // keep `id` for frontend compatibility
+            risk_level,
+            health_score,
+            risk_description,
+            recommendations,
+            shap_explanation,
+            createdAt,
+            sensorData: mlPayload,
+          },
+        });
+      } catch (saveErr) {
+        console.error("Prediction save error:", saveErr.message);
+        // Fall back to returning immediate response without id
+      }
+    }
+
+    // Anonymous or fallback: return immediate response without DB id
     res.json({
       success: true,
       prediction: {
@@ -142,26 +174,10 @@ exports.predict = async (req, res) => {
         risk_description,
         recommendations,
         shap_explanation,
-        id: predictionId,
         createdAt,
-        sensorData: mlPayload, // Include sensor data for later SHAP fetch
+        sensorData: mlPayload,
       },
     });
-
-    // Save to MongoDB in background (fire and forget)
-    if (userId) {
-      setImmediate(() => {
-        Prediction.create({
-          userId,
-          ...mlPayload,
-          health_score,
-          risk_level,
-          risk_description,
-          recommendations,
-          shap_explanation,
-        }).catch(err => console.error('[Async Save Error]', err.message));
-      });
-    }
   } catch (err) {
     console.error("Predict error:", err.message);
     if (err.code === "ECONNREFUSED") {

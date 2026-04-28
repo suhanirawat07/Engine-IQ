@@ -11,6 +11,15 @@ export default function ResultPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  React.useEffect(() => {
+    // Ensure result page starts at top to avoid layout/scroll jumps
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    } catch (e) {
+      window.scrollTo(0, 0);
+    }
+  }, []);
+
   const prediction = state?.prediction;
   const inputs = state?.inputs;
   const risk_level = prediction?.risk_level || "Healthy";
