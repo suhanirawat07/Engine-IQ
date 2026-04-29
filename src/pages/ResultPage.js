@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { RISK_CONFIG, SENSORS } from "../services/sensorMeta";
 import HealthGauge from "../components/HealthGauge";
 import { useAuth } from "../hooks/useAuth";
-import { askAssistant, submitPredictionFeedback, fetchShapExplanation } from "../services/api";
+import { askAssistant, submitPredictionFeedback } from "../services/api";
 import RevealSection from "../components/RevealSection";
 
 export default function ResultPage() {
@@ -43,9 +43,7 @@ export default function ResultPage() {
         "I can explain this prediction using your sensor and SHAP data. Ask: Why is my engine risk high?",
     },
   ]);
-  const [shap, setShap] = useState(prediction?.shap_explanation);
-  const [shapeLoading, setShapLoading] = useState(false);
-  const [shapError, setShapError] = useState("");
+  const shap = prediction?.shap_explanation;
 
   // Guard: if navigated here directly without state
   if (!prediction) {
@@ -62,55 +60,7 @@ export default function ResultPage() {
     );
   }
 
-  const buildLocalExplanation = () => {
-    if (!inputs) return null;
-
-    const rows = SENSORS.map((sensor) => {
-      const value = Number(inputs[sensor.key]);
-      const safeValue = Number.isFinite(value) ? value : Number(sensor.default);
-      const range = Math.max(1, Number(sensor.max) - Number(sensor.min));
-      const impact = (safeValue - Number(sensor.default)) / range;
-      return {
-        feature: sensor.key,
-        value: safeValue,
-        impact,
-        direction: impact >= 0 ? "increase" : "decrease",
-        abs_impact: Math.abs(impact),
-      };
-    });
-
-    const ranked = [...rows].sort((a, b) => b.abs_impact - a.abs_impact);
-    return {
-      method: "Heuristic Attribution (Fallback)",
-      predicted_class: null,
-      base_value: 0,
-      top_positive: ranked.filter((r) => r.impact > 0).slice(0, 5),
-      top_negative: ranked.filter((r) => r.impact < 0).slice(0, 5),
-      top_features: ranked.slice(0, 8),
-    };
-  };
-
-  const handleFetchShap = async () => {
-    if (shap) return; // Already loaded
-    setShapLoading(true);
-    setShapError("");
-    try {
-      const { data } = await fetchShapExplanation(inputs);
-      setShap(data?.shap_explanation || buildLocalExplanation());
-    } catch (err) {
-      setShapError(
-        err?.response?.data?.error ||
-          (err.code === "ECONNABORTED"
-            ? "SHAP explanation generation timed out. Using local fallback."
-            : "Failed to fetch SHAP explanation. Using local fallback.")
-      );
-      setShap(buildLocalExplanation());
-    } finally {
-      setShapLoading(false);
-    }
-  };
-
-  const displayedShap = shap || buildLocalExplanation();
+  const displayedShap = shap;
 
   const prettySensorName = (key) =>
     SENSORS.find((sensor) => sensor.key === key)?.label || key;
@@ -300,30 +250,10 @@ export default function ResultPage() {
           <h2 id="xai-title" className="font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
             <span>🧠</span> SHAP Explanation (XAI)
           </h2>
-          {!shap && !shapeLoading && (
-            <button
-              onClick={handleFetchShap}
-              className="px-3 py-1.5 bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 border border-cyan-500/50 rounded-lg text-xs font-semibold hover:bg-cyan-500/30 transition-all"
-            >
-              Load Full Explanation
-            </button>
-          )}
-          {shapeLoading && (
-            <div className="flex items-center gap-2 text-xs text-stone-500">
-              <div className="w-3 h-3 border border-cyan-500 border-t-transparent rounded-full animate-spin" />
-              Generating...
-            </div>
-          )}
         </div>
         <p className="text-stone-600 dark:text-stone-300 text-sm mb-4">
           This report highlights which sensor readings pushed the model toward the current prediction.
         </p>
-
-        {shapError && (
-          <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-xs text-yellow-700 dark:text-yellow-300">
-            {shapError}
-          </div>
-        )}
 
         <div className="bg-stone-100 rounded-xl border border-stone-300 p-4 mb-5">
           <p className="text-sm font-semibold text-stone-900 mb-2">Health Score = {Math.round(health_score)}</p>
@@ -338,53 +268,42 @@ export default function ResultPage() {
           </ul>
         </div>
 
-        {!shap && !shapeLoading ? (
+        <div className="grid sm:grid-cols-2 gap-4 mb-5">
           <div className="bg-stone-100 rounded-xl border border-stone-300 p-4">
-            <p className="text-sm font-semibold text-stone-900 mb-2">💡 Quick Explanation Ready</p>
-            <p className="text-sm text-stone-600 mb-4">
-              Using heuristic attribution based on your sensor readings. Click "Load Full Explanation" above for ML-powered SHAP analysis.
+            <p className="text-xs text-stone-500 mb-1">Method</p>
+            <p className="text-sm font-semibold text-stone-900">{displayedShap?.method || "SHAP"}</p>
+          </div>
+          <div className="bg-stone-100 rounded-xl border border-stone-300 p-4">
+            <p className="text-xs text-stone-500 mb-1">Base Value (model output baseline)</p>
+            <p className="text-sm font-semibold text-stone-900">
+              {typeof displayedShap?.base_value === "number" ? displayedShap.base_value.toFixed(4) : "N/A"}
             </p>
           </div>
-        ) : (
-          <>
-            <div className="grid sm:grid-cols-2 gap-4 mb-5">
-              <div className="bg-stone-100 rounded-xl border border-stone-300 p-4">
-                <p className="text-xs text-stone-500 mb-1">Method</p>
-                <p className="text-sm font-semibold text-stone-900">{displayedShap.method || "SHAP"}</p>
-              </div>
-              <div className="bg-stone-100 rounded-xl border border-stone-300 p-4">
-                <p className="text-xs text-stone-500 mb-1">Base Value (model output baseline)</p>
-                <p className="text-sm font-semibold text-stone-900">
-                  {typeof displayedShap.base_value === "number" ? displayedShap.base_value.toFixed(4) : "N/A"}
-                </p>
-              </div>
-            </div>
+        </div>
 
-            <div className="grid lg:grid-cols-2 gap-5">
-              <div>
-                <h3 className="text-sm font-bold text-stone-900 mb-3">↑ Features Increasing Predicted Risk</h3>
-                <div className="space-y-3">
-                  {(displayedShap.top_positive || []).length ? (
-                    displayedShap.top_positive.map((row) => renderImpactRow(row, "bg-red-500"))
-                  ) : (
-                    <p className="text-sm text-stone-500">No strong positive risk drivers detected.</p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-bold text-stone-900 mb-3">↓ Features Decreasing Predicted Risk</h3>
-                <div className="space-y-3">
-                  {(displayedShap.top_negative || []).length ? (
-                    displayedShap.top_negative.map((row) => renderImpactRow(row, "bg-green-500"))
-                  ) : (
-                    <p className="text-sm text-stone-500">No strong protective drivers detected.</p>
-                  )}
-                </div>
-              </div>
+        <div className="grid lg:grid-cols-2 gap-5">
+          <div>
+            <h3 className="text-sm font-bold text-stone-900 mb-3">↑ Features Increasing Predicted Risk</h3>
+            <div className="space-y-3">
+              {(displayedShap?.top_positive || []).length ? (
+                displayedShap.top_positive.map((row) => renderImpactRow(row, "bg-red-500"))
+              ) : (
+                <p className="text-sm text-stone-500">No strong positive risk drivers detected.</p>
+              )}
             </div>
-          </>
-        )}
+          </div>
+
+          <div>
+            <h3 className="text-sm font-bold text-stone-900 mb-3">↓ Features Decreasing Predicted Risk</h3>
+            <div className="space-y-3">
+              {(displayedShap?.top_negative || []).length ? (
+                displayedShap.top_negative.map((row) => renderImpactRow(row, "bg-green-500"))
+              ) : (
+                <p className="text-sm text-stone-500">No strong protective drivers detected.</p>
+              )}
+            </div>
+          </div>
+        </div>
       </RevealSection>
 
       {/* Feedback loop */}

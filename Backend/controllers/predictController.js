@@ -115,9 +115,9 @@ exports.predict = async (req, res) => {
       mlPayload[field] = parseFloat(sensorData[field]);
     }
 
-    // Call Python ML API (skip SHAP initially for faster response)
+    // Call Python ML API with SHAP enabled so the explanation is returned inline.
     const mlResponse = await axios.post(
-      `${process.env.ML_API_URL}/predict?skip_shap=true`,
+      `${process.env.ML_API_URL}/predict`,
       mlPayload,
       { timeout: 120000 }
     );
